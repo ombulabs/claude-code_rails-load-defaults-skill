@@ -1,0 +1,154 @@
+# Rails 5.0 Framework Defaults Config Reference
+#
+# Configs are organized into tiers:
+#   tier_1: Safe to flip — test-only or trivially low risk
+#   tier_2: Low risk — need a quick codebase grep to confirm
+#   tier_3: Medium/high risk — need careful analysis (future addition)
+#
+# Processing order: tier_1 first, then tier_2, then tier_3.
+#
+# NOTE: The 5.0 new_framework_defaults file uses a different format than later
+# versions. Configs are listed with the OLD value (not commented out), and you
+# need to FLIP them to the new value. The template preserves this original format.
+
+version: "5.0"
+
+tier_1:
+  # ---- Test-only or trivially safe configs ----
+
+  - config: action_controller.raise_on_unfiltered_parameters
+    config_line: "Rails.application.config.action_controller.raise_on_unfiltered_parameters = true"
+    new_default: true
+    old_default: false
+    risk: very_low
+    old_behavior: "Shows a deprecation warning when unfiltered parameters are used"
+    new_behavior: >
+      Raises an error when unfiltered parameters are used. This setting was
+      deprecated in Rails 5.1 (always behaves as true) and removed in 5.2.
+    lookup: []
+    decision: >
+      Always safe to use new default (true). This setting helps surface
+      deprecation issues. It was removed in Rails 5.2, so it only matters
+      during the 5.0 to 5.1 transition. After all deprecation warnings are
+      fixed, flip to true. Remove this setting entirely when upgrading to 5.2.
+
+  - config: active_support.halt_callback_chains_on_return_false
+    config_line: "ActiveSupport.halt_callback_chains_on_return_false = false"
+    new_default: false
+    old_default: true
+    risk: very_low
+    old_behavior: "Callback chains are halted when a callback returns false"
+    new_behavior: >
+      Callback chains are NOT halted when a callback returns false. Only
+      `throw :abort` halts the chain. This avoids accidental halting when
+      a callback happens to return false.
+    lookup:
+      - search: "return false"
+        in: "app/models/**/*.rb, app/controllers/**/*.rb"
+        reason: "Check for callbacks that explicitly return false to halt the chain"
+    decision: >
+      If no callbacks explicitly return false to halt execution → safe to use
+      new default (false).
+      If callbacks return false intentionally to halt → change them to use
+      `throw :abort` instead, then flip to false.
+      This is a well-documented Rails 5.0 change. Most apps should already be
+      using throw :abort if they upgraded to 5.0.
+
+tier_2:
+  # ---- Low risk configs needing a codebase check ----
+
+  - config: action_controller.per_form_csrf_tokens
+    config_line: "Rails.application.config.action_controller.per_form_csrf_tokens = true"
+    new_default: true
+    old_default: false
+    risk: low
+    old_behavior: "A single CSRF token is used across all forms"
+    new_behavior: "Each form gets its own CSRF token for improved security"
+    lookup:
+      - search: "csrf"
+        in: "config/**/*.rb, app/controllers/**/*.rb"
+        reason: "Check for any custom CSRF handling"
+      - search: "verify_authenticity_token"
+        in: "app/controllers/**/*.rb"
+        reason: "Check for custom authenticity token verification"
+    decision: >
+      If no custom CSRF handling → safe to use new default (true). This is a
+      security improvement.
+      If custom CSRF handling exists → review to ensure per-form tokens are
+      compatible. In most cases they are.
+      Most apps → safe to use new default.
+
+  - config: action_controller.forgery_protection_origin_check
+    config_line: "Rails.application.config.action_controller.forgery_protection_origin_check = true"
+    new_default: true
+    old_default: false
+    risk: low
+    old_behavior: "CSRF protection does not check the HTTP Origin header"
+    new_behavior: "CSRF protection also verifies the HTTP Origin header matches"
+    lookup:
+      - search: "forgery_protection\\|csrf"
+        in: "config/**/*.rb, app/controllers/**/*.rb"
+        reason: "Check for custom forgery protection settings"
+      - search: "protect_from_forgery"
+        in: "app/controllers/**/*.rb"
+        reason: "Check for custom forgery protection configuration"
+    decision: >
+      If no custom forgery protection config → safe to use new default (true).
+      This is a security improvement.
+      If the app receives cross-origin requests that should be allowed →
+      review the origin checking behavior to ensure it won't block legitimate
+      requests.
+      Most apps → safe to use new default.
+
+  - config: active_support.to_time_preserves_timezone
+    config_line: "ActiveSupport.to_time_preserves_timezone = true"
+    new_default: true
+    old_default: false
+    risk: low
+    old_behavior: "to_time converts to local system timezone"
+    new_behavior: "to_time preserves the timezone of the receiver"
+    lookup:
+      - search: "\\.to_time"
+        in: "app/**/*.rb, lib/**/*.rb"
+        reason: "Check for usage of to_time method"
+    decision: >
+      If no to_time usage found → safe to use new default (true), zero impact.
+      If to_time is used → the new behavior is generally more correct (preserves
+      timezone). Check if any code depends on to_time returning local time.
+      Most apps → safe to use new default.
+
+  - config: active_record.belongs_to_required_by_default
+    config_line: "Rails.application.config.active_record.belongs_to_required_by_default = true"
+    new_default: true
+    old_default: false
+    risk: low
+    old_behavior: "belongs_to associations allow nil by default"
+    new_behavior: "belongs_to associations are required (not nil) by default"
+    lookup:
+      - search: "belongs_to"
+        in: "app/models/**/*.rb"
+        reason: "Find all belongs_to associations"
+      - search: "optional: true"
+        in: "app/models/**/*.rb"
+        reason: "Check which associations already declare optional: true"
+    decision: >
+      If no belongs_to associations → safe to use new default (true).
+      If belongs_to associations exist → check if any intentionally allow nil.
+      Those need `optional: true` added before flipping this.
+      Run the test suite — validation errors will clearly surface any issues.
+      This is a well-known Rails 5.0 change most apps handle during upgrade.
+
+# ---- Tier 3: Higher risk configs (documented but NOT auto-processed) ----
+
+tier_3_reference:
+  - config: ssl_options
+    config_line: "config.ssl_options = { hsts: { subdomains: true } }"
+    new_default: "{ hsts: { subdomains: true } }"
+    old_default: "{}"
+    risk: medium
+    note: >
+      This is set by load_defaults 5.0 but is NOT in the new_framework_defaults
+      file. It enables HSTS subdomains by default. Only relevant if the app uses
+      force_ssl. If subdomains don't support HTTPS, this can cause issues. Check
+      if force_ssl is enabled and whether all subdomains support HTTPS before
+      enabling.

@@ -1,0 +1,132 @@
+# Rails 5.2 Framework Defaults Config Reference
+#
+# Configs are organized into tiers:
+#   tier_1: Safe to flip — test-only or trivially low risk
+#   tier_2: Low risk — need a quick codebase grep to confirm
+#   tier_3: Medium/high risk — need careful analysis
+#
+# Processing order: tier_1 first, then tier_2, then tier_3.
+
+version: "5.2"
+
+tier_1:
+  # ---- Test-only or trivially safe configs ----
+
+  - config: action_view.form_with_generates_ids
+    config_line: "Rails.application.config.action_view.form_with_generates_ids = true"
+    new_default: true
+    old_default: false
+    risk: very_low
+    old_behavior: "form_with does not generate id attributes on HTML tags"
+    new_behavior: "form_with generates id attributes for any generated HTML tags"
+    lookup: []
+    decision: >
+      Always safe to use new default (true). Adding id attributes to form
+      elements is purely additive and does not break existing functionality.
+      It makes forms more accessible and easier to target with CSS/JS.
+
+  - config: action_controller.default_protect_from_forgery
+    config_line: "Rails.application.config.action_controller.default_protect_from_forgery = true"
+    new_default: true
+    old_default: false
+    risk: very_low
+    old_behavior: "Forgery protection must be added explicitly in ApplicationController"
+    new_behavior: "ActionController::Base includes forgery protection by default"
+    lookup:
+      - search: "protect_from_forgery"
+        in: "app/controllers/application_controller.rb"
+        reason: "Check if ApplicationController already has protect_from_forgery"
+    decision: >
+      If ApplicationController already has protect_from_forgery → safe to use
+      new default (true), it's redundant but harmless.
+      If ApplicationController does NOT have protect_from_forgery → this adds
+      it. Should be safe for most apps as CSRF protection is standard practice.
+      Most apps → safe to use new default.
+
+tier_2:
+  # ---- Low risk configs needing a codebase check ----
+
+  - config: active_record.cache_versioning
+    config_line: "Rails.application.config.active_record.cache_versioning = true"
+    new_default: true
+    old_default: false
+    risk: low
+    old_behavior: "Cache key includes the updated_at timestamp directly"
+    new_behavior: >
+      Cache key is stable, and a separate cache_version holds the volatile
+      timestamp. This enables recyclable cache keys.
+    lookup:
+      - search: "cache_key"
+        in: "app/**/*.rb, lib/**/*.rb"
+        reason: "Check for direct use of cache_key method"
+      - search: "Rails.cache"
+        in: "app/**/*.rb, lib/**/*.rb"
+        reason: "Check for cache usage in the app"
+    decision: >
+      If no caching is used → safe to use new default (true), zero impact.
+      If caching is used → the new default is generally better (recyclable keys).
+      Check if any code parses or depends on the format of cache_key.
+      Most apps → safe to use new default.
+
+  - config: active_support.use_authenticated_message_encryption
+    config_line: "Rails.application.config.active_support.use_authenticated_message_encryption = true"
+    new_default: true
+    old_default: false
+    risk: low
+    old_behavior: "Messages are encrypted with AES-256-CBC"
+    new_behavior: "Messages are encrypted with AES-256-GCM (authenticated encryption)"
+    lookup:
+      - search: "MessageEncryptor\\|encrypt_and_sign\\|decrypt_and_verify"
+        in: "app/**/*.rb, lib/**/*.rb"
+        reason: "Check for direct use of message encryption"
+    decision: >
+      If no direct message encryption usage → safe to use new default (true).
+      If message encryption is used → new messages will use GCM. Old CBC
+      messages can still be read. Only concern is if external systems read
+      these encrypted messages and expect CBC format.
+      Most apps → safe to use new default.
+
+  - config: active_support.use_sha1_digests
+    config_line: "Rails.application.config.active_support.use_sha1_digests = true"
+    new_default: true
+    old_default: false
+    risk: low
+    old_behavior: "Non-sensitive digests (ETags, etc.) use MD5"
+    new_behavior: >
+      Non-sensitive digests use SHA-1. Note: this default changes back in
+      Rails 7.0 where it switches to SHA-256. If removing this file in favor
+      of load_defaults, recommend setting the value explicitly to prevent
+      defaults from changing it.
+    lookup:
+      - search: "etag\\|ETag\\|stale?"
+        in: "app/controllers/**/*.rb"
+        reason: "Check for ETag usage"
+    decision: >
+      If no explicit ETag/digest usage → safe to use new default (true).
+      Changing the digest algorithm will invalidate ETags and similar caches,
+      causing a one-time cache miss.
+      IMPORTANT: This default changes again in 7.0 (to SHA-256). Consider
+      whether to set this explicitly.
+      Most apps → safe to use new default.
+
+tier_3_reference:
+  - config: action_dispatch.use_authenticated_cookie_encryption
+    config_line: "Rails.application.config.action_dispatch.use_authenticated_cookie_encryption = true"
+    new_default: true
+    old_default: false
+    risk: high
+    note: >
+      Switches cookie encryption to AES-256-GCM and embeds expiry metadata.
+      Not backwards compatible with earlier Rails versions. Existing cookies
+      are converted on read and rewritten with the new scheme. Only enable
+      after the app is fully stable on 5.2 with no rollback plans.
+
+  - config: active_record.sqlite3.represent_boolean_as_integer
+    config_line: "Rails.application.config.active_record.sqlite3.represent_boolean_as_integer = true"
+    new_default: true
+    old_default: false
+    risk: medium
+    note: >
+      Stores booleans as 1/0 instead of 't'/'f' in SQLite3. Only relevant
+      if the app uses SQLite. Requires a data migration for existing boolean
+      columns. If using PostgreSQL or MySQL, this has no impact.

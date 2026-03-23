@@ -1,0 +1,166 @@
+# Rails 6.0 Framework Defaults Config Reference
+#
+# Configs are organized into tiers:
+#   tier_1: Safe to flip — test-only or trivially low risk
+#   tier_2: Low risk — need a quick codebase grep to confirm
+#   tier_3: Medium/high risk — need careful analysis
+#
+# Processing order: tier_1 first, then tier_2, then tier_3.
+
+version: "6.0"
+
+tier_1:
+  # ---- Test-only or trivially safe configs ----
+
+  - config: action_view.default_enforce_utf8
+    config_line: "Rails.application.config.action_view.default_enforce_utf8 = false"
+    new_default: false
+    old_default: true
+    risk: very_low
+    old_behavior: "Forms include a hidden UTF-8 enforcement field for old IE browsers"
+    new_behavior: "Forms no longer include the hidden UTF-8 enforcement field"
+    lookup: []
+    decision: >
+      Always safe to use new default (false). The UTF-8 enforcement was only
+      needed for old versions of IE that are no longer supported. Removing it
+      slightly reduces form payload size.
+
+tier_2:
+  # ---- Low risk configs needing a codebase check ----
+
+  - config: action_dispatch.return_only_media_type_on_content_type
+    config_line: "Rails.application.config.action_dispatch.return_only_media_type_on_content_type = false"
+    new_default: false
+    old_default: true
+    risk: low
+    old_behavior: "ActionDispatch::Response#content_type returns only the MIME type (e.g., 'text/html')"
+    new_behavior: >
+      content_type returns the full Content-Type header including charset
+      (e.g., 'text/html; charset=utf-8'). This setting is deprecated in
+      Rails 6.1 and removed in 7.0 where the final behavior matches false.
+    lookup:
+      - search: "content_type"
+        in: "app/controllers/**/*.rb, spec/**/*.rb, test/**/*.rb"
+        reason: "Check for code that reads response.content_type and may depend on format"
+    decision: >
+      If no code checks response.content_type → safe to use new default (false).
+      If tests compare content_type to a string like "text/html" → they may
+      need updating to include charset.
+      This is deprecated in 6.1 and removed in 7.0 anyway.
+      Most apps → safe to use new default.
+
+  - config: active_job.return_false_on_aborted_enqueue
+    config_line: "Rails.application.config.active_job.return_false_on_aborted_enqueue = true"
+    new_default: true
+    old_default: false
+    risk: low
+    old_behavior: "Aborted enqueue returns the job instance (self)"
+    new_behavior: >
+      Aborted enqueue returns false. This setting is deprecated in Rails 6.1
+      and removed in 7.0 where the final behavior matches true.
+    lookup:
+      - search: "perform_later\\|enqueue"
+        in: "app/**/*.rb, lib/**/*.rb"
+        reason: "Check for code that checks the return value of enqueue/perform_later"
+      - search: "before_enqueue\\|around_enqueue"
+        in: "app/jobs/**/*.rb"
+        reason: "Check for enqueue callbacks that might abort"
+    decision: >
+      If no code checks the return value of perform_later/enqueue → safe.
+      If code checks the return value → update to handle false instead of self.
+      This is deprecated in 6.1 and removed in 7.0 anyway.
+      Most apps → safe to use new default.
+
+  - config: active_storage.queues.analysis
+    config_line: "Rails.application.config.active_storage.queues.analysis = :active_storage_analysis"
+    new_default: ":active_storage_analysis"
+    old_default: "nil (default queue)"
+    risk: low
+    old_behavior: "Active Storage analysis jobs go to the default queue"
+    new_behavior: >
+      Analysis jobs go to a dedicated :active_storage_analysis queue.
+      Note: this is later changed to nil in Rails 6.1 defaults.
+    lookup:
+      - search: "has_one_attached\\|has_many_attached"
+        in: "app/models/**/*.rb"
+        reason: "Check if Active Storage is used"
+      - search: "active_storage_analysis"
+        in: "config/**/*.rb"
+        reason: "Check if queue is already configured"
+    decision: >
+      If Active Storage is not used → no impact, safe to use new default.
+      If Active Storage is used → ensure the queue adapter processes the
+      :active_storage_analysis queue. Note this changes to nil in 6.1.
+      Most apps → safe to use new default.
+
+  - config: active_storage.queues.purge
+    config_line: "Rails.application.config.active_storage.queues.purge = :active_storage_purge"
+    new_default: ":active_storage_purge"
+    old_default: "nil (default queue)"
+    risk: low
+    old_behavior: "Active Storage purge jobs go to the default queue"
+    new_behavior: >
+      Purge jobs go to a dedicated :active_storage_purge queue.
+      Note: this is later changed to nil in Rails 6.1 defaults.
+    lookup:
+      - search: "has_one_attached\\|has_many_attached"
+        in: "app/models/**/*.rb"
+        reason: "Check if Active Storage is used"
+      - search: "active_storage_purge"
+        in: "config/**/*.rb"
+        reason: "Check if queue is already configured"
+    decision: >
+      If Active Storage is not used → no impact, safe to use new default.
+      If Active Storage is used → ensure the queue adapter processes the
+      :active_storage_purge queue. Note this changes to nil in 6.1.
+      Most apps → safe to use new default.
+
+  - config: active_record.collection_cache_versioning
+    config_line: "Rails.application.config.active_record.collection_cache_versioning = true"
+    new_default: true
+    old_default: false
+    risk: low
+    old_behavior: "Relation cache keys include volatile info (max updated_at, count)"
+    new_behavior: >
+      Volatile info moves to cache_version, enabling recyclable cache keys
+      for ActiveRecord::Relation objects.
+    lookup:
+      - search: "cache_key\\|cache"
+        in: "app/**/*.rb"
+        reason: "Check for caching of ActiveRecord relations"
+    decision: >
+      If no relation caching → safe to use new default (true), zero impact.
+      If caching is used → new default is generally better. Check if any code
+      depends on the format of relation cache keys.
+      Most apps → safe to use new default.
+
+tier_3_reference:
+  - config: action_dispatch.use_cookies_with_metadata
+    config_line: "Rails.application.config.action_dispatch.use_cookies_with_metadata = true"
+    new_default: true
+    old_default: false
+    risk: high
+    note: >
+      Embeds purpose and expiry metadata in signed/encrypted cookies. Not
+      backwards compatible with earlier Rails versions. Only enable after
+      the app is fully stable on 6.0 with no rollback plans.
+
+  - config: active_storage.replace_on_assign_to_many
+    config_line: "Rails.application.config.active_storage.replace_on_assign_to_many = true"
+    new_default: true
+    old_default: false
+    risk: medium
+    note: >
+      When assigning to has_many_attached, replaces existing attachments
+      instead of appending. Check all has_many_attached assignments to
+      ensure replace behavior is desired. Use #attach to append.
+
+  - config: action_mailer.delivery_job
+    config_line: 'Rails.application.config.action_mailer.delivery_job = "ActionMailer::MailDeliveryJob"'
+    new_default: '"ActionMailer::MailDeliveryJob"'
+    old_default: '"ActionMailer::DeliveryJob"'
+    risk: medium
+    note: >
+      Switches to the unified MailDeliveryJob. The old delivery jobs are
+      removed in Rails 6.1. Not backwards compatible — job workers need
+      MailDeliveryJob available. Ensure all workers are on 6.0 before enabling.
