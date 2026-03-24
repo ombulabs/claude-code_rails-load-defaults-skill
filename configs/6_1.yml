@@ -1,0 +1,300 @@
+# Rails 6.1 Framework Defaults Config Reference
+#
+# Configs are organized into tiers:
+#   tier_1: Safe to flip — test-only or trivially low risk
+#   tier_2: Low risk — need a quick codebase grep to confirm
+#   tier_3: Medium/high risk — need careful analysis
+#
+# Processing order: tier_1 first, then tier_2, then tier_3.
+
+version: "6.1"
+
+tier_1:
+  # ---- Test-only or trivially safe configs ----
+
+  - config: active_job.retry_jitter
+    config_line: "Rails.application.config.active_job.retry_jitter = 0.15"
+    new_default: 0.15
+    old_default: 0.0
+    risk: very_low
+    old_behavior: "Retried jobs have no random jitter in their delay"
+    new_behavior: >
+      Retried jobs have up to 15% random variation in their retry delay.
+      This prevents thundering herd problems when many jobs fail and retry
+      at the same time.
+    lookup: []
+    decision: >
+      Always safe to use new default (0.15). This is a best practice that
+      prevents retry storms. No code changes needed.
+
+  - config: active_storage.queues.analysis
+    config_line: "Rails.application.config.active_storage.queues.analysis = nil"
+    new_default: nil
+    old_default: ":active_storage_analysis"
+    risk: very_low
+    old_behavior: "Analysis jobs go to a dedicated :active_storage_analysis queue"
+    new_behavior: "Analysis jobs go to the queue adapter default queue"
+    lookup:
+      - search: "has_one_attached\\|has_many_attached"
+        in: "app/models/**/*.rb"
+        reason: "Check if Active Storage is used"
+    decision: >
+      If Active Storage is not used → no impact, safe.
+      If Active Storage is used → safe to use new default (nil). Jobs go to
+      the default queue, which is simpler to manage.
+
+  - config: active_storage.queues.purge
+    config_line: "Rails.application.config.active_storage.queues.purge = nil"
+    new_default: nil
+    old_default: ":active_storage_purge"
+    risk: very_low
+    old_behavior: "Purge jobs go to a dedicated :active_storage_purge queue"
+    new_behavior: "Purge jobs go to the queue adapter default queue"
+    lookup:
+      - search: "has_one_attached\\|has_many_attached"
+        in: "app/models/**/*.rb"
+        reason: "Check if Active Storage is used"
+    decision: >
+      If Active Storage is not used → no impact, safe.
+      If Active Storage is used → safe to use new default (nil).
+
+  - config: action_mailbox.queues.incineration
+    config_line: "Rails.application.config.action_mailbox.queues.incineration = nil"
+    new_default: nil
+    old_default: ":action_mailbox_incineration"
+    risk: very_low
+    old_behavior: "Incineration jobs go to a dedicated queue"
+    new_behavior: "Incineration jobs go to the default queue"
+    lookup:
+      - search: "action_mailbox\\|ActionMailbox"
+        in: "app/**/*.rb, config/**/*.rb, Gemfile"
+        reason: "Check if Action Mailbox is used"
+    decision: >
+      If Action Mailbox is not used → no impact, safe.
+      If used → safe to use new default (nil).
+
+  - config: action_mailbox.queues.routing
+    config_line: "Rails.application.config.action_mailbox.queues.routing = nil"
+    new_default: nil
+    old_default: ":action_mailbox_routing"
+    risk: very_low
+    old_behavior: "Routing jobs go to a dedicated queue"
+    new_behavior: "Routing jobs go to the default queue"
+    lookup:
+      - search: "action_mailbox\\|ActionMailbox"
+        in: "app/**/*.rb, config/**/*.rb, Gemfile"
+        reason: "Check if Action Mailbox is used"
+    decision: >
+      If Action Mailbox is not used → no impact, safe.
+      If used → safe to use new default (nil).
+
+  - config: action_mailer.deliver_later_queue_name
+    config_line: "Rails.application.config.action_mailer.deliver_later_queue_name = nil"
+    new_default: nil
+    old_default: ":mailers"
+    risk: very_low
+    old_behavior: "Mail delivery jobs go to the :mailers queue"
+    new_behavior: "Mail delivery jobs go to the default queue"
+    lookup:
+      - search: "deliver_later"
+        in: "app/**/*.rb"
+        reason: "Check if deliver_later is used"
+      - search: "deliver_later_queue_name"
+        in: "config/**/*.rb"
+        reason: "Check if already customized"
+    decision: >
+      If deliver_later is not used → no impact, safe.
+      If used → safe to use new default (nil). Jobs go to the default queue.
+      If you have a specific queue setup for :mailers → keep the old value
+      or adjust your queue configuration.
+
+tier_2:
+  # ---- Low risk configs needing a codebase check ----
+
+  - config: active_record.has_many_inversing
+    config_line: "Rails.application.config.active_record.has_many_inversing = true"
+    new_default: true
+    old_default: false
+    risk: low
+    old_behavior: "belongs_to → has_many inverse is not automatic"
+    new_behavior: "Supports inversing belongs_to → has_many associations automatically"
+    lookup:
+      - search: "has_many.*inverse_of"
+        in: "app/models/**/*.rb"
+        reason: "Check for explicit inverse_of on has_many associations"
+    decision: >
+      If no explicit inverse_of on has_many → safe to use new default (true).
+      If explicit inverse_of exists → still safe, the explicit setting takes
+      precedence.
+      Most apps → safe to use new default.
+
+  - config: active_storage.track_variants
+    config_line: "Rails.application.config.active_storage.track_variants = true"
+    new_default: true
+    old_default: false
+    risk: low
+    old_behavior: "Active Storage variants are not tracked in the database"
+    new_behavior: "Variants are tracked in the database for better performance"
+    lookup:
+      - search: "has_one_attached\\|has_many_attached"
+        in: "app/models/**/*.rb"
+        reason: "Check if Active Storage is used"
+      - search: "variant"
+        in: "app/**/*.rb"
+        reason: "Check for variant usage"
+    decision: >
+      If Active Storage is not used → no impact, safe.
+      If variants are used → safe to enable. Requires the
+      active_storage_variant_records migration. Check if it exists.
+      If using Active Storage without variants → safe to enable.
+
+  - config: active_job.skip_after_callbacks_if_terminated
+    config_line: "Rails.application.config.active_job.skip_after_callbacks_if_terminated = true"
+    new_default: true
+    old_default: false
+    risk: low
+    old_behavior: "after_enqueue/after_perform run even if before callbacks halt with throw :abort"
+    new_behavior: >
+      after callbacks are skipped if before callbacks halt. Deprecated in 7.0,
+      final behavior is always true.
+    lookup:
+      - search: "after_enqueue\\|after_perform"
+        in: "app/jobs/**/*.rb"
+        reason: "Check for after callbacks in jobs"
+      - search: "before_enqueue\\|before_perform"
+        in: "app/jobs/**/*.rb"
+        reason: "Check for before callbacks that might abort"
+    decision: >
+      If no job callbacks → safe to use new default (true), zero impact.
+      If jobs have both before and after callbacks → check if after callbacks
+      contain cleanup logic that must run even when before halts.
+      This is deprecated in 7.0 anyway.
+      Most apps → safe to use new default.
+
+  - config: action_dispatch.cookies_same_site_protection
+    config_line: "Rails.application.config.action_dispatch.cookies_same_site_protection = :lax"
+    new_default: ":lax"
+    old_default: "nil (no SameSite attribute)"
+    risk: low
+    old_behavior: "Cookies do not include a SameSite attribute"
+    new_behavior: "Cookies include SameSite=Lax by default"
+    lookup:
+      - search: "cookies_same_site_protection\\|SameSite\\|same_site"
+        in: "config/**/*.rb, app/controllers/**/*.rb"
+        reason: "Check for existing SameSite configuration"
+      - search: "cookies\\["
+        in: "app/controllers/**/*.rb"
+        reason: "Check for cookie usage"
+    decision: >
+      If no custom SameSite config → safe to use new default (:lax). This is
+      the browser default behavior for modern browsers anyway.
+      If the app needs cross-site cookies (e.g., embedded iframes, OAuth) →
+      those specific cookies may need SameSite=None with Secure flag.
+      Most apps → safe to use new default.
+
+  - config: action_controller.urlsafe_csrf_tokens
+    config_line: "Rails.application.config.action_controller.urlsafe_csrf_tokens = true"
+    new_default: true
+    old_default: false
+    risk: low
+    old_behavior: "CSRF tokens use standard Base64 encoding"
+    new_behavior: "CSRF tokens use URL-safe Base64 encoding"
+    lookup:
+      - search: "csrf\\|authenticity_token"
+        in: "app/**/*.rb, app/views/**/*"
+        reason: "Check for custom CSRF token handling"
+    decision: >
+      If no custom CSRF token handling → safe to use new default (true).
+      Not backwards compatible with earlier Rails versions — enable only
+      after the app is fully stable on 6.1.
+      Most apps → safe to use new default.
+
+  - config: active_support.utc_to_local_returns_utc_offset_times
+    config_line: "ActiveSupport.utc_to_local_returns_utc_offset_times = true"
+    new_default: true
+    old_default: false
+    risk: low
+    old_behavior: "utc_to_local returns a time with UTC timezone"
+    new_behavior: "utc_to_local returns a time with the proper UTC offset"
+    lookup:
+      - search: "utc_to_local"
+        in: "app/**/*.rb, lib/**/*.rb"
+        reason: "Check for direct utc_to_local usage"
+    decision: >
+      If no utc_to_local usage → safe to use new default (true), zero impact.
+      If used → the new behavior is more correct. Check if any code depends
+      on the returned time having UTC timezone.
+      Most apps → safe to use new default.
+
+  - config: action_dispatch.ssl_default_redirect_status
+    config_line: "Rails.application.config.action_dispatch.ssl_default_redirect_status = 308"
+    new_default: 308
+    old_default: 301
+    risk: low
+    old_behavior: "Non-GET/HEAD requests to HTTP are redirected with 301 (may change method to GET)"
+    new_behavior: "Non-GET/HEAD requests are redirected with 308 (preserves HTTP method)"
+    lookup:
+      - search: "force_ssl\\|ssl_default_redirect_status"
+        in: "config/**/*.rb"
+        reason: "Check if force_ssl is used and if redirect status is customized"
+    decision: >
+      If force_ssl is not used → no impact, safe.
+      If force_ssl is used → 308 is more correct (preserves method). Safe for
+      modern browsers. Only concern is very old clients that don't support 308.
+      Most apps → safe to use new default.
+
+  - config: action_view.form_with_generates_remote_forms
+    config_line: "Rails.application.config.action_view.form_with_generates_remote_forms = false"
+    new_default: false
+    old_default: true
+    risk: low
+    old_behavior: "form_with generates remote (AJAX) forms by default"
+    new_behavior: "form_with generates standard (non-remote) forms by default"
+    lookup:
+      - search: "form_with"
+        in: "app/views/**/*.erb, app/views/**/*.haml, app/views/**/*.slim"
+        reason: "Find all form_with usages"
+      - search: "remote:"
+        in: "app/views/**/*.erb, app/views/**/*.haml, app/views/**/*.slim"
+        reason: "Check if forms specify remote: explicitly"
+    decision: >
+      If form_with is not used → safe to use new default (false), zero impact.
+      If form_with is used without explicit remote: → forms will become
+      non-remote. This is the more common and expected behavior.
+      If forms rely on being remote → add remote: true explicitly to those forms.
+      Most apps → safe to use new default.
+
+  - config: action_view.preload_links_header
+    config_line: "Rails.application.config.action_view.preload_links_header = true"
+    new_default: true
+    old_default: false
+    risk: low
+    old_behavior: "No Link header for asset preloading"
+    new_behavior: >
+      Generates a Link header for preloading assets when using
+      javascript_include_tag and stylesheet_link_tag. Hints modern browsers
+      to preload assets.
+    lookup:
+      - search: "javascript_include_tag\\|stylesheet_link_tag"
+        in: "app/views/layouts/**/*"
+        reason: "Check if these helpers are used"
+      - search: "preload_links_header"
+        in: "config/**/*.rb"
+        reason: "Check if already configured"
+    decision: >
+      If the app uses a CDN or custom asset serving → check that the Link
+      header doesn't cause issues with the CDN.
+      If standard Rails asset serving → safe to use new default (true).
+      Most apps → safe to use new default.
+
+tier_3_reference:
+  - config: active_record.legacy_connection_handling
+    config_line: "Rails.application.config.active_record.legacy_connection_handling = false"
+    new_default: false
+    old_default: true
+    risk: medium
+    note: >
+      Switches to the new connection handling API. For single-database apps,
+      this has no effect. For multi-database apps, this enables granular
+      connection swapping. Check if the app uses multiple databases and
+      test thoroughly.

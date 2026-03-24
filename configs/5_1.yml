@@ -1,0 +1,67 @@
+# Rails 5.1 Framework Defaults Config Reference
+#
+# Configs are organized into tiers:
+#   tier_1: Safe to flip — test-only or trivially low risk
+#   tier_2: Low risk — need a quick codebase grep to confirm
+#   tier_3: Medium/high risk — need careful analysis
+#
+# Processing order: tier_1 first, then tier_2, then tier_3.
+
+version: "5.1"
+
+tier_1: []
+  # ---- Test-only or trivially safe configs ----
+tier_2:
+  # ---- Low risk configs needing a codebase check ----
+
+  - config: action_view.form_with_generates_remote_forms
+    config_line: "Rails.application.config.action_view.form_with_generates_remote_forms = true"
+    new_default: true
+    old_default: false
+    risk: low
+    old_behavior: "form_with generates non-remote (standard) forms"
+    new_behavior: >
+      form_with generates remote (AJAX) forms by default. Note: this default
+      changes BACK to false in Rails 6.1. If removing this file in favor of
+      load_defaults, recommend setting the value explicitly to prevent defaults
+      from changing it in future versions.
+    lookup:
+      - search: "form_with"
+        in: "app/views/**/*.erb, app/views/**/*.haml, app/views/**/*.slim"
+        reason: "Find all usages of form_with helper"
+      - search: "remote:"
+        in: "app/views/**/*.erb, app/views/**/*.haml, app/views/**/*.slim"
+        reason: "Check if forms already specify remote: option explicitly"
+      - search: "turbolinks\\|rails-ujs\\|@rails/ujs"
+        in: "Gemfile, app/javascript/**/*.js, app/assets/javascripts/**/*.js"
+        reason: "Check if the app has UJS/Turbolinks for handling remote forms"
+    decision: >
+      If form_with is not used → safe to use new default (true), zero impact.
+      If form_with is used and app has rails-ujs/Turbolinks → safe, remote forms
+      will work as expected.
+      If form_with is used but no UJS → keep false, remote forms won't work
+      without JavaScript handling.
+      IMPORTANT: This default flips back to false in 6.1. Consider setting the
+      value explicitly regardless of which default you choose.
+
+  - config: assets.unknown_asset_fallback
+    config_line: "Rails.application.config.assets.unknown_asset_fallback = false"
+    new_default: false
+    old_default: true
+    risk: low
+    old_behavior: "Unknown asset paths are passed through as-is (fallback to path)"
+    new_behavior: "Unknown asset paths raise an error in the asset pipeline"
+    lookup:
+      - search: "asset_path\\|image_tag\\|javascript_include_tag\\|stylesheet_link_tag"
+        in: "app/views/**/*.erb, app/views/**/*.haml, app/views/**/*.slim"
+        reason: "Check for asset helper usage that might reference non-pipeline assets"
+      - search: "config.assets"
+        in: "config/**/*.rb"
+        reason: "Check for existing asset pipeline configuration"
+    decision: >
+      If the app uses the asset pipeline properly → safe to use new default (false).
+      If the app references assets outside the pipeline by path → keep true to
+      avoid errors, or fix the asset references.
+      Most apps → safe to use new default.
+
+tier_3_reference: []

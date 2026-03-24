@@ -48,6 +48,11 @@ Report to the user:
 
 Read the appropriate config reference file for the target version:
 
+- **5.0**: `configs/5_0.yml`
+- **5.1**: `configs/5_1.yml`
+- **5.2**: `configs/5_2.yml`
+- **6.0**: `configs/6_0.yml`
+- **6.1**: `configs/6_1.yml`
 - **7.0**: `configs/7_0.yml`
 - **7.1**: `configs/7_1.yml`
 - **7.2**: `configs/7_2.yml`
@@ -60,6 +65,11 @@ and decision trees for each config.
 If no `new_framework_defaults_X_Y.rb` exists yet, copy the template from
 the `templates/` directory into the app's `config/initializers/`:
 
+- **5.0**: Copy `templates/new_framework_defaults_5_0.rb` → `config/initializers/new_framework_defaults_5_0.rb`
+- **5.1**: Copy `templates/new_framework_defaults_5_1.rb` → `config/initializers/new_framework_defaults_5_1.rb`
+- **5.2**: Copy `templates/new_framework_defaults_5_2.rb` → `config/initializers/new_framework_defaults_5_2.rb`
+- **6.0**: Copy `templates/new_framework_defaults_6_0.rb` → `config/initializers/new_framework_defaults_6_0.rb`
+- **6.1**: Copy `templates/new_framework_defaults_6_1.rb` → `config/initializers/new_framework_defaults_6_1.rb`
 - **7.0**: Copy `templates/new_framework_defaults_7_0.rb` → `config/initializers/new_framework_defaults_7_0.rb`
 - **7.1**: Copy `templates/new_framework_defaults_7_1.rb` → `config/initializers/new_framework_defaults_7_1.rb`
 - **7.2**: Copy `templates/new_framework_defaults_7_2.rb` → `config/initializers/new_framework_defaults_7_2.rb`
