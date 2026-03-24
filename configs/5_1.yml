@@ -9,10 +9,8 @@
 
 version: "5.1"
 
-tier_1:
+tier_1: []
   # ---- Test-only or trivially safe configs ----
-  []
-
 tier_2:
   # ---- Low risk configs needing a codebase check ----
 
