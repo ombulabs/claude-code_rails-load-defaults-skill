@@ -18,7 +18,7 @@ From your Rails project directory, run:
 
 ```bash
 mkdir -p ~/.claude/skills
-git clone https://github.com/fastruby/rails-load-defaults-skill.git ~/.claude/skills/rails-load-defaults
+git clone https://github.com/fastruby/rails-load-defaults-skill.git ~/.claude/skills/rails-load-defaults-skill
 ```
 
 Installing to `~/.claude/skills/` makes it available across all your projects.
@@ -41,14 +41,14 @@ claude "The app is on Rails 7.2 but load_defaults is at 6.1, let's upgrade"
 
 | Transition | Config Reference  | Template                                  |
 | ---------- | ----------------- | ----------------------------------------- |
-| → 5.0      | `configs/5_0.yml` | `templates/new_framework_defaults_5_0.rb` |
-| → 5.1      | `configs/5_1.yml` | `templates/new_framework_defaults_5_1.rb` |
-| → 5.2      | `configs/5_2.yml` | `templates/new_framework_defaults_5_2.rb` |
-| → 6.0      | `configs/6_0.yml` | `templates/new_framework_defaults_6_0.rb` |
-| → 6.1      | `configs/6_1.yml` | `templates/new_framework_defaults_6_1.rb` |
-| → 7.0      | `configs/7_0.yml` | `templates/new_framework_defaults_7_0.rb` |
-| → 7.1      | `configs/7_1.yml` | `templates/new_framework_defaults_7_1.rb` |
-| → 7.2      | `configs/7_2.yml` | `templates/new_framework_defaults_7_2.rb` |
+| → 5.0      | `rails-load-defaults/configs/5_0.yml` | `rails-load-defaults/templates/new_framework_defaults_5_0.rb` |
+| → 5.1      | `rails-load-defaults/configs/5_1.yml` | `rails-load-defaults/templates/new_framework_defaults_5_1.rb` |
+| → 5.2      | `rails-load-defaults/configs/5_2.yml` | `rails-load-defaults/templates/new_framework_defaults_5_2.rb` |
+| → 6.0      | `rails-load-defaults/configs/6_0.yml` | `rails-load-defaults/templates/new_framework_defaults_6_0.rb` |
+| → 6.1      | `rails-load-defaults/configs/6_1.yml` | `rails-load-defaults/templates/new_framework_defaults_6_1.rb` |
+| → 7.0      | `rails-load-defaults/configs/7_0.yml` | `rails-load-defaults/templates/new_framework_defaults_7_0.rb` |
+| → 7.1      | `rails-load-defaults/configs/7_1.yml` | `rails-load-defaults/templates/new_framework_defaults_7_1.rb` |
+| → 7.2      | `rails-load-defaults/configs/7_2.yml` | `rails-load-defaults/templates/new_framework_defaults_7_2.rb` |
 
 ## How It Works
 
@@ -109,36 +109,39 @@ config.action_view.button_to_generates_button_tag = false
 ## Skill Structure
 
 ```
-rails-load-defaults/
-├── SKILL.md                                # Workflow instructions
-├── configs/
-│   ├── 5_0.yml                             # Config reference with lookup logic
-│   ├── 5_1.yml
-│   ├── 5_2.yml
-│   ├── 6_0.yml
-│   ├── 6_1.yml
-│   ├── 7_0.yml
-│   ├── 7_1.yml
-│   └── 7_2.yml
-└── templates/
-    ├── new_framework_defaults_5_0.rb       # Rails initializer templates
-    ├── new_framework_defaults_5_1.rb
-    ├── new_framework_defaults_5_2.rb
-    ├── new_framework_defaults_6_0.rb
-    ├── new_framework_defaults_6_1.rb
-    ├── new_framework_defaults_7_0.rb
-    ├── new_framework_defaults_7_1.rb
-    ├── new_framework_defaults_7_2.rb
-    └── cookie_rotator.rb                   # SHA1→SHA256 cookie rotation
+rails-load-defaults-skill/
+├── README.md
+├── LICENSE
+└── rails-load-defaults/                    # Skill directory (name matches SKILL.md name)
+    ├── SKILL.md                            # Workflow instructions
+    ├── configs/
+    │   ├── 5_0.yml                         # Config reference with lookup logic
+    │   ├── 5_1.yml
+    │   ├── 5_2.yml
+    │   ├── 6_0.yml
+    │   ├── 6_1.yml
+    │   ├── 7_0.yml
+    │   ├── 7_1.yml
+    │   └── 7_2.yml
+    └── templates/
+        ├── new_framework_defaults_5_0.rb   # Rails initializer templates
+        ├── new_framework_defaults_5_1.rb
+        ├── new_framework_defaults_5_2.rb
+        ├── new_framework_defaults_6_0.rb
+        ├── new_framework_defaults_6_1.rb
+        ├── new_framework_defaults_7_0.rb
+        ├── new_framework_defaults_7_1.rb
+        ├── new_framework_defaults_7_2.rb
+        └── cookie_rotator.rb              # SHA1→SHA256 cookie rotation
 ```
 
 ## Adding New Versions
 
 To add support for a new Rails version (e.g., 8.0):
 
-1. Add `templates/new_framework_defaults_8_0.rb` — the initializer from Rails
-2. Add `configs/8_0.yml` — config entries with tiers, lookup patterns, and decision trees
-3. Update the version references in `SKILL.md`
+1. Add `rails-load-defaults/templates/new_framework_defaults_8_0.rb` — the initializer from Rails
+2. Add `rails-load-defaults/configs/8_0.yml` — config entries with tiers, lookup patterns, and decision trees
+3. Update the version references in `rails-load-defaults/SKILL.md`
 
 The workflow logic in `SKILL.md` is version-agnostic, so no other changes are needed.
 
