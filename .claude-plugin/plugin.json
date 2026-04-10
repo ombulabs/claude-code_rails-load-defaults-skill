@@ -1,0 +1,13 @@
+{
+  "name": "rails-load-defaults",
+  "version": "1.0.0",
+  "description": "Align Rails load_defaults across versions with safe, incremental config changes based on FastRuby.io methodology",
+  "skills": "./rails-load-defaults/",
+  "author": {
+    "name": "OmbuLabs",
+    "url": "https://github.com/ombulabs"
+  },
+  "repository": "https://github.com/ombulabs/claude-code_rails-load-defaults-skill",
+  "license": "MIT",
+  "keywords": ["rails", "configuration", "upgrade", "load_defaults"]
+}
