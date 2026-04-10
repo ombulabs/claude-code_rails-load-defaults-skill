@@ -14,11 +14,18 @@ This skill automates the process of bringing a Rails app's `load_defaults` confi
 
 ## Installation
 
-From your Rails project directory, run:
+**Via the OmbuLabs marketplace (recommended):**
 
 ```bash
-mkdir -p ~/.claude/skills
-git clone https://github.com/fastruby/rails-load-defaults-skill.git ~/.claude/skills/rails-load-defaults-skill
+claude plugin marketplace add https://github.com/ombulabs/claude-skills.git
+claude plugin install rails-load-defaults@ombulabs-skills
+```
+
+**Manual install:**
+
+```bash
+git clone https://github.com/ombulabs/claude-code_rails-load-defaults-skill.git
+cp -r claude-code_rails-load-defaults-skill/rails-load-defaults ~/.claude/skills/
 ```
 
 Installing to `~/.claude/skills/` makes it available across all your projects.
