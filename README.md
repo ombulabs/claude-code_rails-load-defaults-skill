@@ -30,6 +30,9 @@ cp -r claude-code_rails-load-defaults-skill/rails-load-defaults ~/.claude/skills
 
 Installing to `~/.claude/skills/` makes it available across all your projects.
 
+> [!NOTE]
+> This skill works standalone, but it is part of the full Rails upgrade toolkit. You may also want to install [dual-boot](https://github.com/ombulabs/claude-code_dual-boot-skill) and [rails-upgrade](https://github.com/ombulabs/claude-code_rails-upgrade-skill).
+
 ## Usage
 
 Once installed, invoke the skill with:
