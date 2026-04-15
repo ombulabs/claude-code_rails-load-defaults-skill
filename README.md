@@ -18,7 +18,7 @@ This skill automates the process of bringing a Rails app's `load_defaults` confi
 
 ```bash
 claude plugin marketplace add https://github.com/ombulabs/claude-skills.git
-claude plugin install rails-load-defaults@ombulabs-skills
+claude plugin install rails-load-defaults@ombulabs-ai
 ```
 
 **Manual install:**
