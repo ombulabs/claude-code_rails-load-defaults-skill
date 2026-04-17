@@ -14,7 +14,14 @@ This skill automates the process of bringing a Rails app's `load_defaults` confi
 
 ## Installation
 
-**Via the OmbuLabs marketplace (recommended):**
+**From inside the Claude Code CLI prompt (recommended):**
+
+```
+/plugin marketplace add ombulabs/claude-skills
+/plugin install rails-load-defaults@ombulabs-ai
+```
+
+**From your terminal:**
 
 ```bash
 claude plugin marketplace add https://github.com/ombulabs/claude-skills.git
